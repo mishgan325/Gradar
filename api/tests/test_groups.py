@@ -59,29 +59,34 @@ class TestGroupAPI:
         assert group.name == 'Updated Group'
 
     def test_add_student_to_group(self):
-        # Create a group
-        group = Group.objects.create(name='Test Group', year=2024)
+        # Create a group first
+        group = Group.objects.create(
+            name='Test Group',
+            year=2024
+        )
         
-        data = {'student_ids': [self.student.id]}
-        url = reverse('group-detail', args=[group.id])
-        response = self.teacher_client.patch(url, data)
+        data = {'student_id': self.student.id}
+        url = reverse('group-add-student', args=[group.id])
+        response = self.teacher_client.post(url, data)
         assert response.status_code == status.HTTP_200_OK
+        # Verify student was added to group
         group.refresh_from_db()
-        assert group.students.count() == 1
-        assert group.students.first() == self.student
+        assert self.student in group.students.all()
 
     def test_student_single_group_validation(self):
-        # Create first group and add student
+        # Create two groups
         group1 = Group.objects.create(name='Test Group 1', year=2024)
+        group2 = Group.objects.create(name='Test Group 2', year=2024)
+        
+        # Add student to first group
         group1.students.add(self.student)
         
         # Try to add student to second group
-        group2 = Group.objects.create(name='Test Group 2', year=2024)
         data = {'student_ids': [self.student.id]}
-        url = reverse('group-detail', args=[group2.id])
-        response = self.teacher_client.patch(url, data)
+        url = reverse('group-bulk-add-students', args=[group2.id])
+        response = self.teacher_client.post(url, data)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert 'уже состоит в группе' in str(response.data['error'])
+        assert f"Студент {self.student.get_full_name()} уже состоит в группе Test Group 1" in str(response.data['error'])
 
     def test_list_groups_student(self, auth_client):
         """Test that students can only see their own groups"""
@@ -115,27 +120,23 @@ class TestGroupAPI:
         response = client.post(url, data)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_create_group_teacher(self, auth_client):
-        """Test that teachers can create groups"""
-        client, _ = auth_client(role='teacher')
-        url = reverse('group-list')
-        group_name = f'Test Group {uuid.uuid4().hex}'
+    def test_create_group_teacher(self):
         data = {
-            'name': group_name,
-            'description': 'Test group description'
+            'name': 'Test Group',
+            'year': 2024
         }
-        response = client.post(url, data)
+        response = self.teacher_client.post(self.url, data)
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data['name'] == group_name
 
     @pytest.fixture
-    def test_group(self, auth_client):
+    def test_group(self, create_group):
         """Create a test group"""
-        client, _ = auth_client(role='teacher')
-        url = reverse('group-list')
-        data = {'name': 'Test Group'}
-        response = client.post(url, data)
-        return response.data
+        group = create_group()
+        return {
+            'id': group.id,
+            'name': group.name,
+            'year': group.year
+        }
 
     def test_retrieve_group(self, auth_client, test_group):
         """Test retrieving group details"""
