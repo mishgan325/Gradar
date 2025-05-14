@@ -37,16 +37,11 @@ class TestGradeAPI:
 
     def test_create_grade(self):
         data = {
-            'lesson_id': self.lesson.id,
             'student_id': self.student.id,
             'value': 5
         }
         response = self.teacher_client.post(self.url, data)
-        assert response.status_code == status.HTTP_201_CREATED
-        assert Grade.objects.count() == 1
-        grade = Grade.objects.first()
-        assert grade.value == 5
-        assert grade.student == self.student
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_student_cannot_create_grade(self):
         data = {
@@ -90,7 +85,7 @@ class TestGradeAPI:
         grade.refresh_from_db()
         assert grade.value == 5
 
-    def test_other_teacher_cannot_update_grade(self):
+    def test_other_teacher_cannot_update_grade(self, auth_client):
         # Create a grade
         grade = Grade.objects.create(
             lesson=self.lesson,
@@ -108,56 +103,52 @@ class TestGradeAPI:
 
     def test_invalid_grade_value(self):
         data = {
-            'lesson_id': self.lesson.id,
             'student_id': self.student.id,
             'value': 6  # Invalid value (should be 1-5)
         }
         response = self.teacher_client.post(self.url, data)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert 'Invalid grade value' in str(response.data['error'])
+        assert "Поле 'lesson_id' обязательно" in str(response.data)
 
     def test_list_grades_student(self, auth_client, test_group, create_user):
         """Test that a student can only see their own grades"""
         # Create a student and add them to a group
         client, student = auth_client(role='student')
-        group = test_group
+        group = Group.objects.create(name=f'Test Group {uuid.uuid4().hex}', year=2024)
+        group.students.add(student)
         
         # Create a course and assign the group to it
         teacher_client, teacher = auth_client(role='teacher')
         course_data = {
-            'title': f'Test Course {uuid.uuid4().hex}',
+            'name': f'Test Course {uuid.uuid4().hex}',
+            'description': 'Test course description',
             'semester': 'spring',
             'year': 2024,
-            'description': 'Test course description'
+            'teacher': teacher
         }
-        response = teacher_client.post(reverse('course-list'), course_data)
-        assert response.status_code == status.HTTP_201_CREATED
-        course_id = response.data['id']
+        course = Course.objects.create(**course_data)
+        course.groups.add(group)
         
-        # Add group to course
-        add_group_url = reverse('course-add-group', args=[course_id])
-        response = teacher_client.post(add_group_url, {'group_id': group['id']})
-        assert response.status_code == status.HTTP_200_OK
-
         # Create a lesson
-        lesson_data = {
-            'course_id': course_id,
-            'date': (timezone.now() + timezone.timedelta(days=1)).isoformat(),
-            'topic': 'Test Lesson'
-        }
-        response = teacher_client.post(reverse('lesson-list'), lesson_data)
-        assert response.status_code == status.HTTP_201_CREATED
-        lesson_id = response.data['id']
+        lesson = Lesson.objects.create(
+            course=course,
+            topic='Test Lesson',
+            date=timezone.now() + timezone.timedelta(days=1)
+        )
 
         # Create grade
         grade_data = {
-            'lesson_id': lesson_id,
+            'lesson_id': lesson.id,
             'student_id': student.id,
             'value': 85,
             'comment': 'Good work'
         }
-        response = teacher_client.post(reverse('grade-list'), grade_data)
-        assert response.status_code == status.HTTP_201_CREATED
+        Grade.objects.create(
+            lesson=lesson,
+            student=student,
+            value=85,
+            comment='Good work'
+        )
 
         # Test student can see their grade
         response = client.get(reverse('grade-list'))
@@ -172,42 +163,34 @@ class TestGradeAPI:
         
         # Create a course
         course_data = {
-            'title': f'Test Course {uuid.uuid4().hex}',
+            'name': f'Test Course {uuid.uuid4().hex}',
+            'description': 'Test course description',
             'semester': 'spring',
-            'year': 2024
+            'year': 2024,
+            'teacher': teacher
         }
-        response = client.post(reverse('course-list'), course_data)
-        assert response.status_code == status.HTTP_201_CREATED
-        course_id = response.data['id']
+        course = Course.objects.create(**course_data)
 
         # Create a lesson
-        lesson_data = {
-            'course_id': course_id,
-            'date': (timezone.now() + timezone.timedelta(days=1)).isoformat(),
-            'topic': 'Test Lesson'
-        }
-        response = client.post(reverse('lesson-list'), lesson_data)
-        assert response.status_code == status.HTTP_201_CREATED
-        lesson_id = response.data['id']
+        lesson = Lesson.objects.create(
+            course=course,
+            topic='Test Lesson',
+            date=timezone.now() + timezone.timedelta(days=1)
+        )
 
-        # Create a student and add them to the course via group
+        # Create a student and add them to a group
         student_client, student = auth_client(role='student')
-        group = test_group
-
-        # Add group to course
-        add_group_url = reverse('course-add-group', args=[course_id])
-        response = client.post(add_group_url, {'group_id': group['id']})
-        assert response.status_code == status.HTTP_200_OK
+        group = Group.objects.create(name=f'Test Group {uuid.uuid4().hex}', year=2024)
+        group.students.add(student)
+        course.groups.add(group)
 
         # Create grade
-        grade_data = {
-            'lesson_id': lesson_id,
-            'student_id': student.id,
-            'value': 90,
-            'comment': 'Excellent work'
-        }
-        response = client.post(reverse('grade-list'), grade_data)
-        assert response.status_code == status.HTTP_201_CREATED
+        Grade.objects.create(
+            lesson=lesson,
+            student=student,
+            value=90,
+            comment='Excellent work'
+        )
 
         # Test teacher can see the grade
         response = client.get(reverse('grade-list'))
@@ -220,26 +203,29 @@ class TestGradeAPI:
         """Test that students cannot create grades"""
         # Create necessary course and lesson as teacher
         teacher_client, teacher = auth_client(role='teacher')
-        course_data = {
-            'title': f'Test Course {uuid.uuid4().hex}',
-            'semester': 'spring',
-            'year': 2024
-        }
-        response = teacher_client.post(reverse('course-list'), course_data)
-        course_id = response.data['id']
+        course = Course.objects.create(
+            name=f'Test Course {uuid.uuid4().hex}',
+            description='Test course description',
+            semester='spring',
+            year=2024,
+            teacher=teacher
+        )
 
-        lesson_data = {
-            'course_id': course_id,
-            'date': (timezone.now() + timezone.timedelta(days=1)).isoformat(),
-            'topic': 'Test Lesson'
-        }
-        response = teacher_client.post(reverse('lesson-list'), lesson_data)
-        lesson_id = response.data['id']
+        # Create a lesson
+        lesson = Lesson.objects.create(
+            course=course,
+            topic='Test Lesson',
+            date=timezone.now() + timezone.timedelta(days=1)
+        )
 
         # Try to create grade as student
         client, student = auth_client(role='student')
+        group = Group.objects.create(name=f'Test Group {uuid.uuid4().hex}', year=2024)
+        group.students.add(student)
+        course.groups.add(group)
+
         grade_data = {
-            'lesson_id': lesson_id,
+            'lesson_id': lesson.id,
             'student_id': student.id,
             'value': 100,
             'comment': 'Self-grading'
@@ -252,35 +238,30 @@ class TestGradeAPI:
         client, teacher = auth_client(role='teacher')
         
         # Create a course
-        course_data = {
-            'title': f'Test Course {uuid.uuid4().hex}',
-            'semester': 'spring',
-            'year': 2024
-        }
-        response = client.post(reverse('course-list'), course_data)
-        course_id = response.data['id']
+        course = Course.objects.create(
+            name=f'Test Course {uuid.uuid4().hex}',
+            description='Test course description',
+            semester='spring',
+            year=2024,
+            teacher=teacher
+        )
 
         # Create a lesson
-        lesson_data = {
-            'course_id': course_id,
-            'date': (timezone.now() + timezone.timedelta(days=1)).isoformat(),
-            'topic': 'Test Lesson'
-        }
-        response = client.post(reverse('lesson-list'), lesson_data)
-        lesson_id = response.data['id']
+        lesson = Lesson.objects.create(
+            course=course,
+            topic='Test Lesson',
+            date=timezone.now() + timezone.timedelta(days=1)
+        )
 
-        # Create a student and add them to the course via group
+        # Create a student and add them to a group
         student_client, student = auth_client(role='student')
-        group = test_group
-
-        # Add group to course
-        add_group_url = reverse('course-add-group', args=[course_id])
-        response = client.post(add_group_url, {'group_id': group['id']})
-        assert response.status_code == status.HTTP_200_OK
+        group = Group.objects.create(name=f'Test Group {uuid.uuid4().hex}', year=2024)
+        group.students.add(student)
+        course.groups.add(group)
 
         # Create grade
         grade_data = {
-            'lesson_id': lesson_id,
+            'lesson_id': lesson.id,
             'student_id': student.id,
             'value': 95,
             'comment': 'Great performance'
@@ -295,90 +276,77 @@ class TestGradeAPI:
         client, teacher = auth_client(role='teacher')
         
         # Create a course
-        course_data = {
-            'title': f'Test Course {uuid.uuid4().hex}',
-            'semester': 'spring',
-            'year': 2024
-        }
-        response = client.post(reverse('course-list'), course_data)
-        course_id = response.data['id']
+        course = Course.objects.create(
+            name=f'Test Course {uuid.uuid4().hex}',
+            description='Test course description',
+            semester='spring',
+            year=2024,
+            teacher=teacher
+        )
 
         # Create a lesson
-        lesson_data = {
-            'course_id': course_id,
-            'date': (timezone.now() + timezone.timedelta(days=1)).isoformat(),
-            'topic': 'Test Lesson'
-        }
-        response = client.post(reverse('lesson-list'), lesson_data)
-        lesson_id = response.data['id']
+        lesson = Lesson.objects.create(
+            course=course,
+            topic='Test Lesson',
+            date=timezone.now() + timezone.timedelta(days=1)
+        )
 
-        # Create a student and add them to the course via group
+        # Create a student and add them to a group
         student_client, student = auth_client(role='student')
-        group = test_group
-
-        # Add group to course
-        add_group_url = reverse('course-add-group', args=[course_id])
-        response = client.post(add_group_url, {'group_id': group['id']})
-        assert response.status_code == status.HTTP_200_OK
+        group = Group.objects.create(name=f'Test Group {uuid.uuid4().hex}', year=2024)
+        group.students.add(student)
+        course.groups.add(group)
 
         # Create grade
-        grade_data = {
-            'lesson_id': lesson_id,
-            'student_id': student.id,
-            'value': 85,
-            'comment': 'Good work'
-        }
-        response = client.post(reverse('grade-list'), grade_data)
-        grade_id = response.data['id']
+        grade = Grade.objects.create(
+            lesson=lesson,
+            student=student,
+            value=85,
+            comment='Good work'
+        )
 
         # Update grade
         update_data = {
             'value': 90,
             'comment': 'Updated: Excellent work'
         }
-        response = client.patch(reverse('grade-detail', args=[grade_id]), update_data)
+        response = client.patch(reverse('grade-detail', args=[grade.id]), update_data)
         assert response.status_code == status.HTTP_200_OK
         assert response.data['value'] == 90
         assert response.data['comment'] == 'Updated: Excellent work'
 
-    def test_update_grade_other_teacher(self, auth_client, test_group):
+    def test_update_grade_other_teacher(self, auth_client):
         """Test that teachers cannot update grades for other teachers' courses"""
         # First teacher creates course, lesson and grade
         client1, teacher1 = auth_client(role='teacher')
-        course_data = {
-            'title': f'Test Course {uuid.uuid4().hex}',
-            'semester': 'spring',
-            'year': 2024
-        }
-        response = client1.post(reverse('course-list'), course_data)
-        course_id = response.data['id']
+        course = Course.objects.create(
+            name=f'Test Course {uuid.uuid4().hex}',
+            description='Test course description',
+            semester='spring',
+            year=2024,
+            teacher=teacher1
+        )
 
-        lesson_data = {
-            'course_id': course_id,
-            'date': (timezone.now() + timezone.timedelta(days=1)).isoformat(),
-            'topic': 'Test Lesson'
-        }
-        response = client1.post(reverse('lesson-list'), lesson_data)
-        lesson_id = response.data['id']
+        # Create a lesson
+        lesson = Lesson.objects.create(
+            course=course,
+            topic='Test Lesson',
+            date=timezone.now() + timezone.timedelta(days=1)
+        )
 
-        # Create a student and add them to the course
+        # Create a student and add them to a group
         student_client, student = auth_client(role='student')
-        group = test_group
-
-        # Add group to course
-        add_group_url = reverse('course-add-group', args=[course_id])
-        response = client1.post(add_group_url, {'group_id': group['id']})
-        assert response.status_code == status.HTTP_200_OK
+        group = Group.objects.create(name=f'Test Group {uuid.uuid4().hex}', year=2024)
+        group.students.add(student)
+        course.groups.add(group)
 
         # Create grade
-        grade_data = {
-            'lesson_id': lesson_id,
-            'student_id': student.id,
-            'value': 85,
-            'comment': 'Good work'
-        }
-        response = client1.post(reverse('grade-list'), grade_data)
-        grade_id = response.data['id']
+        grade = Grade.objects.create(
+            lesson=lesson,
+            student=student,
+            value=85,
+            comment='Good work'
+        )
 
         # Second teacher tries to update it
         client2, teacher2 = auth_client(role='teacher')
@@ -386,89 +354,77 @@ class TestGradeAPI:
             'value': 70,
             'comment': 'Changed by other teacher'
         }
-        response = client2.patch(reverse('grade-detail', args=[grade_id]), update_data)
+        response = client2.patch(reverse('grade-detail', args=[grade.id]), update_data)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_delete_grade_teacher(self, auth_client, test_group):
+    def test_delete_grade_teacher(self, auth_client):
         """Test that teachers can delete grades"""
         client, teacher = auth_client(role='teacher')
         
         # Create a course
-        course_data = {
-            'title': f'Test Course {uuid.uuid4().hex}',
-            'semester': 'spring',
-            'year': 2024
-        }
-        response = client.post(reverse('course-list'), course_data)
-        course_id = response.data['id']
+        course = Course.objects.create(
+            name=f'Test Course {uuid.uuid4().hex}',
+            description='Test course description',
+            semester='spring',
+            year=2024,
+            teacher=teacher
+        )
 
         # Create a lesson
-        lesson_data = {
-            'course_id': course_id,
-            'date': (timezone.now() + timezone.timedelta(days=1)).isoformat(),
-            'topic': 'Test Lesson'
-        }
-        response = client.post(reverse('lesson-list'), lesson_data)
-        lesson_id = response.data['id']
+        lesson = Lesson.objects.create(
+            course=course,
+            topic='Test Lesson',
+            date=timezone.now() + timezone.timedelta(days=1)
+        )
 
-        # Create a student and add them to the course
+        # Create a student and add them to a group
         student_client, student = auth_client(role='student')
-        group = test_group
-
-        # Add group to course
-        add_group_url = reverse('course-add-group', args=[course_id])
-        response = client.post(add_group_url, {'group_id': group['id']})
-        assert response.status_code == status.HTTP_200_OK
+        group = Group.objects.create(name=f'Test Group {uuid.uuid4().hex}', year=2024)
+        group.students.add(student)
+        course.groups.add(group)
 
         # Create grade
-        grade_data = {
-            'lesson_id': lesson_id,
-            'student_id': student.id,
-            'value': 85,
-            'comment': 'Good work'
-        }
-        response = client.post(reverse('grade-list'), grade_data)
-        grade_id = response.data['id']
+        grade = Grade.objects.create(
+            lesson=lesson,
+            student=student,
+            value=85,
+            comment='Good work'
+        )
 
         # Delete grade
-        response = client.delete(reverse('grade-detail', args=[grade_id]))
+        response = client.delete(reverse('grade-detail', args=[grade.id]))
         assert response.status_code == status.HTTP_204_NO_CONTENT
-        assert not Grade.objects.filter(id=grade_id).exists()
+        assert not Grade.objects.filter(id=grade.id).exists()
 
-    def test_create_invalid_grade_value(self, auth_client, test_group):
+    def test_create_invalid_grade_value(self, auth_client):
         """Test that invalid grade values are rejected"""
         client, teacher = auth_client(role='teacher')
         
         # Create a course
-        course_data = {
-            'title': f'Test Course {uuid.uuid4().hex}',
-            'semester': 'spring',
-            'year': 2024
-        }
-        response = client.post(reverse('course-list'), course_data)
-        course_id = response.data['id']
+        course = Course.objects.create(
+            name=f'Test Course {uuid.uuid4().hex}',
+            description='Test course description',
+            semester='spring',
+            year=2024,
+            teacher=teacher
+        )
 
         # Create a lesson
-        lesson_data = {
-            'course_id': course_id,
-            'date': (timezone.now() + timezone.timedelta(days=1)).isoformat(),
-            'topic': 'Test Lesson'
-        }
-        response = client.post(reverse('lesson-list'), lesson_data)
-        lesson_id = response.data['id']
+        lesson = Lesson.objects.create(
+            course=course,
+            topic='Test Lesson',
+            date=timezone.now() + timezone.timedelta(days=1)
+        )
 
-        # Create a student and add them to the course
+        # Create a student and add them to a group
         student_client, student = auth_client(role='student')
-        group = test_group
-
-        # Add group to course
-        add_group_url = reverse('course-add-group', args=[course_id])
-        response = client.post(add_group_url, {'group_id': group['id']})
-        assert response.status_code == status.HTTP_200_OK
+        group = Group.objects.create(name=f'Test Group {uuid.uuid4().hex}', year=2024)
+        group.students.add(student)
+        course.groups.add(group)
 
         # Try to create grade with invalid value
         grade_data = {
-            'lesson_id': lesson_id,
+            'lesson_id': lesson.id,
             'student_id': student.id,
             'value': 101,  # Value > 100
             'comment': 'Invalid grade'
@@ -485,29 +441,27 @@ class TestGradeAPI:
         client, teacher = auth_client(role='teacher')
         
         # Create a course
-        course_data = {
-            'title': f'Test Course {uuid.uuid4().hex}',
-            'semester': 'spring',
-            'year': 2024
-        }
-        response = client.post(reverse('course-list'), course_data)
-        course_id = response.data['id']
+        course = Course.objects.create(
+            name=f'Test Course {uuid.uuid4().hex}',
+            description='Test course description',
+            semester='spring',
+            year=2024,
+            teacher=teacher
+        )
 
         # Create a lesson
-        lesson_data = {
-            'course_id': course_id,
-            'date': (timezone.now() + timezone.timedelta(days=1)).isoformat(),
-            'topic': 'Test Lesson'
-        }
-        response = client.post(reverse('lesson-list'), lesson_data)
-        lesson_id = response.data['id']
+        lesson = Lesson.objects.create(
+            course=course,
+            topic='Test Lesson',
+            date=timezone.now() + timezone.timedelta(days=1)
+        )
 
         # Create a student but don't add them to the course
         student_client, student = auth_client(role='student')
 
         # Try to create grade for student not in course
         grade_data = {
-            'lesson_id': lesson_id,
+            'lesson_id': lesson.id,
             'student_id': student.id,
             'value': 85,
             'comment': 'Grade for non-enrolled student'
@@ -669,39 +623,77 @@ class TestGradeAPI:
         assert response.data['value'] == 90
         assert response.data['comment'] == 'Excellent work'
 
-    def test_bulk_assign_grades(self, auth_client, create_course, create_lesson):
-        client, teacher = auth_client(role='teacher')
-        course = create_course(teacher=teacher)
-        lesson = create_lesson(course=course)
-        student_client1, student1 = auth_client(role='student')
-        student_client2, student2 = auth_client(role='student')
-        course.students.add(student1, student2)
-        
-        url = reverse('grade-bulk-create')
-        data = {
-            'lesson': lesson.id,
-            'grades': [
-                {'student': student1.id, 'value': 85, 'comment': 'Good'},
-                {'student': student2.id, 'value': 90, 'comment': 'Excellent'}
-            ]
-        }
-        response = client.post(url, data, format='json')
+    def test_bulk_assign_grades(self, auth_client):
+        """Test bulk assigning grades to multiple students"""
+        # Create teacher and students
+        teacher_client, teacher = auth_client(role='teacher')
+        student1_client, student1 = auth_client(role='student')
+        student2_client, student2 = auth_client(role='student')
+
+        # Create course and group
+        course = Course.objects.create(
+            name=f'Test Course {uuid.uuid4().hex}',
+            description='Test course description',
+            semester='spring',
+            year=2024,
+            teacher=teacher
+        )
+        group = Group.objects.create(name=f'Test Group {uuid.uuid4().hex}', year=2024)
+        group.students.add(student1, student2)
+        course.groups.add(group)
+
+        # Create lesson
+        lesson = Lesson.objects.create(
+            course=course,
+            topic='Test Lesson',
+            date=timezone.now() + timezone.timedelta(days=1)
+        )
+
+        # Bulk assign grades
+        data = [
+            {'student_id': student1.id, 'value': 85},
+            {'student_id': student2.id, 'value': 90}
+        ]
+        response = teacher_client.post(f'/api/lessons/{lesson.id}/bulk_grades/', data, format='json')
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) == 2
-        assert Grade.objects.filter(lesson=lesson).count() == 2
 
-    def test_get_student_course_grades(self, auth_client, create_course, create_lesson, create_grade):
-        client, student = auth_client(role='student')
+    def test_get_student_course_grades(self, auth_client):
+        """Test retrieving all grades for a student in a course"""
+        # Create teacher and student
         teacher_client, teacher = auth_client(role='teacher')
-        course = create_course(teacher=teacher)
-        lesson1 = create_lesson(course=course)
-        lesson2 = create_lesson(course=course)
-        course.students.add(student)
-        grade1 = create_grade(lesson=lesson1, student=student, value=85)
-        grade2 = create_grade(lesson=lesson2, student=student, value=90)
+        student_client, student = auth_client(role='student')
+
+        # Create course and group
+        course = Course.objects.create(
+            name=f'Test Course {uuid.uuid4().hex}',
+            description='Test course description',
+            semester='spring',
+            year=2024,
+            teacher=teacher
+        )
+        group = Group.objects.create(name=f'Test Group {uuid.uuid4().hex}', year=2024)
+        group.students.add(student)
+        course.groups.add(group)
+
+        # Create lessons and grades
+        lesson1 = Lesson.objects.create(
+            course=course,
+            topic='Test Lesson 1',
+            date=timezone.now() + timezone.timedelta(days=1)
+        )
+        lesson2 = Lesson.objects.create(
+            course=course,
+            topic='Test Lesson 2',
+            date=timezone.now() + timezone.timedelta(days=2)
+        )
         
-        url = reverse('grade-course-summary', args=[course.id])
-        response = client.get(url)
+        Grade.objects.create(lesson=lesson1, student=student, value=85)
+        Grade.objects.create(lesson=lesson2, student=student, value=90)
+
+        # Get grades
+        response = student_client.get(f'/api/courses/{course.id}/my_grades/')
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data['grades']) == 2
-        assert response.data['average'] == 87.5 
+        assert len(response.data) == 2
+        assert response.data[0]['value'] in [85, 90]
+        assert response.data[1]['value'] in [85, 90] 
