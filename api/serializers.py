@@ -6,70 +6,126 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
-
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'password', 'role', 'first_name', 'last_name', 'bio')
-        read_only_fields = ('id',)
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'bio']
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
 
     def create(self, validated_data):
-        user = User.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data['email'],
-            password=validated_data['password'],
-            role=validated_data.get('role', 'student'),
-            first_name=validated_data.get('first_name', ''),
-            last_name=validated_data.get('last_name', ''),
-            bio=validated_data.get('bio', '')
-        )
+        user = User.objects.create_user(**validated_data)
         return user
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    def validate(self, attrs):
-        data = super().validate(attrs)
-        data['user'] = UserSerializer(self.user).data
-        return data
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['username'] = user.username
+        token['role'] = user.role
+        return token
 
 class GroupSerializer(serializers.ModelSerializer):
     students = UserSerializer(many=True, read_only=True)
     student_ids = serializers.ListField(
         child=serializers.IntegerField(),
         write_only=True,
-        required=False,
-        allow_empty=True,
-        source='students'
+        required=False
     )
 
     class Meta:
         model = Group
-        fields = ('id', 'name', 'students', 'student_ids')
+        fields = ['id', 'name', 'year', 'students', 'student_ids']
+
+    def validate_student_ids(self, value):
+        if not value:
+            return value
+        
+        # Verify all students exist and are actually students
+        students = User.objects.filter(id__in=value)
+        if len(students) != len(value):
+            raise serializers.ValidationError("One or more student IDs are invalid")
+        
+        non_students = students.exclude(role='student')
+        if non_students.exists():
+            raise serializers.ValidationError(
+                f"Users with IDs {list(non_students.values_list('id', flat=True))} are not students"
+            )
+        
+        # Check if any student is already in another group
+        for student in students:
+            other_groups = Group.objects.exclude(pk=self.instance.pk if self.instance else None)
+            other_groups = other_groups.filter(students=student)
+            if other_groups.exists():
+                raise serializers.ValidationError(
+                    f"Student {student.get_full_name()} is already in group {other_groups.first().name}"
+                )
+        
+        return value
 
     def create(self, validated_data):
-        students = validated_data.pop('students', [])
+        student_ids = validated_data.pop('student_ids', [])
         group = Group.objects.create(**validated_data)
-        if students:
+        if student_ids:
+            students = User.objects.filter(id__in=student_ids, role='student')
             group.students.set(students)
         return group
 
     def update(self, instance, validated_data):
-        if 'students' in validated_data:
-            instance.students.set(validated_data.pop('students'))
-        
+        student_ids = validated_data.pop('student_ids', None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
-        
+        if student_ids is not None:
+            students = User.objects.filter(id__in=student_ids, role='student')
+            instance.students.set(students)
         return instance
 
 class CourseSerializer(serializers.ModelSerializer):
     teacher = UserSerializer(read_only=True)
     groups = GroupSerializer(many=True, read_only=True)
+    group_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False
+    )
 
     class Meta:
         model = Course
-        fields = ('id', 'title', 'description', 'teacher', 'groups', 'semester', 'year')
+        fields = ['id', 'name', 'description', 'semester', 'year', 'teacher', 'groups', 'group_ids']
 
+    def validate_group_ids(self, value):
+        if not value:
+            return value
+        
+        # Verify all groups exist
+        groups = Group.objects.filter(id__in=value)
+        if len(groups) != len(value):
+            raise serializers.ValidationError("One or more group IDs are invalid")
+        return value
+
+    def create(self, validated_data):
+        group_ids = validated_data.pop('group_ids', [])
+        course = Course.objects.create(**validated_data)
+        
+        if group_ids:
+            groups = Group.objects.filter(id__in=group_ids)
+            course.groups.set(groups)
+        
+        return course
+
+    def update(self, instance, validated_data):
+        group_ids = validated_data.pop('group_ids', None)
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        if group_ids is not None:
+            groups = Group.objects.filter(id__in=group_ids)
+            instance.groups.set(groups)
+        
+        instance.save()
+        return instance
 
 class LessonSerializer(serializers.ModelSerializer):
     course = CourseSerializer(read_only=True)
@@ -77,7 +133,7 @@ class LessonSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Lesson
-        fields = ('id', 'course', 'course_id', 'date', 'topic')
+        fields = ['id', 'course', 'course_id', 'topic', 'date']
 
     def validate_course_id(self, value):
         try:
@@ -91,6 +147,18 @@ class LessonSerializer(serializers.ModelSerializer):
         except Course.DoesNotExist:
             raise serializers.ValidationError("Указанный курс не существует")
 
+    def validate_date(self, value):
+        from datetime import datetime
+        import pytz
+
+        # Получаем текущее время в UTC
+        now = datetime.now(pytz.UTC)
+        
+        # Если дата урока в прошлом
+        if value < now:
+            raise serializers.ValidationError("Дата урока не может быть в прошлом")
+        
+        return value
 
 class AttendanceSerializer(serializers.ModelSerializer):
     lesson = LessonSerializer(read_only=True)
@@ -100,7 +168,53 @@ class AttendanceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Attendance
-        fields = ('id', 'lesson', 'student', 'lesson_id', 'student_id', 'is_present')
+        fields = ['id', 'lesson', 'student', 'lesson_id', 'student_id', 'is_present']
+
+    def validate(self, data):
+        # При обновлении не требуем lesson_id и student_id
+        if self.instance is not None:
+            return data
+
+        try:
+            lesson = Lesson.objects.get(id=data['lesson_id'])
+            student = User.objects.get(id=data['student_id'])
+            
+            # Проверяем, что студент записан на курс через группу
+            if not student.student_groups.filter(courses=lesson.course).exists():
+                raise serializers.ValidationError("Студент не записан на данный курс")
+                
+            data['lesson'] = lesson
+            data['student'] = student
+            return data
+        except Lesson.DoesNotExist:
+            raise serializers.ValidationError("Указанный урок не существует")
+        except User.DoesNotExist:
+            raise serializers.ValidationError("Указанный студент не существует")
+
+    def create(self, validated_data):
+        lesson = Lesson.objects.get(id=validated_data.pop('lesson_id'))
+        student = User.objects.get(id=validated_data.pop('student_id'))
+        return Attendance.objects.create(lesson=lesson, student=student, **validated_data)
+
+    def update(self, instance, validated_data):
+        if 'lesson_id' in validated_data:
+            instance.lesson = Lesson.objects.get(id=validated_data.pop('lesson_id'))
+        if 'student_id' in validated_data:
+            instance.student = User.objects.get(id=validated_data.pop('student_id'))
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+class GradeSerializer(serializers.ModelSerializer):
+    lesson = LessonSerializer(read_only=True)
+    student = UserSerializer(read_only=True)
+    lesson_id = serializers.IntegerField(write_only=True)
+    student_id = serializers.IntegerField(write_only=True)
+
+    class Meta:
+        model = Grade
+        fields = ['id', 'lesson', 'student', 'lesson_id', 'student_id', 'value', 'comment']
 
     def validate(self, data):
         try:
@@ -111,13 +225,6 @@ class AttendanceSerializer(serializers.ModelSerializer):
             if not student.student_groups.filter(courses=lesson.course).exists():
                 raise serializers.ValidationError("Студент не записан на этот курс")
             
-            # Проверяем, что отметка посещаемости еще не существует
-            if Attendance.objects.filter(lesson=lesson, student=student).exists():
-                raise serializers.ValidationError("Посещаемость для этого студента уже отмечена")
-            
-            # Добавляем объекты в validated_data для create/update
-            data['lesson'] = lesson
-            data['student'] = student
             return data
             
         except Lesson.DoesNotExist:
@@ -125,11 +232,17 @@ class AttendanceSerializer(serializers.ModelSerializer):
         except User.DoesNotExist:
             raise serializers.ValidationError(f"Студент с ID {data.get('student_id')} не найден")
 
+    def create(self, validated_data):
+        lesson = Lesson.objects.get(id=validated_data.pop('lesson_id'))
+        student = User.objects.get(id=validated_data.pop('student_id'))
+        return Grade.objects.create(lesson=lesson, student=student, **validated_data)
 
-class GradeSerializer(serializers.ModelSerializer):
-    lesson = LessonSerializer(read_only=True)
-    student = UserSerializer(read_only=True)
-
-    class Meta:
-        model = Grade
-        fields = ('id', 'lesson', 'student', 'value', 'comment')
+    def update(self, instance, validated_data):
+        if 'lesson_id' in validated_data:
+            instance.lesson = Lesson.objects.get(id=validated_data.pop('lesson_id'))
+        if 'student_id' in validated_data:
+            instance.student = User.objects.get(id=validated_data.pop('student_id'))
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance

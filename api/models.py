@@ -54,6 +54,9 @@ class Group(models.Model):
         unique=True,
         verbose_name='Название группы'
     )
+    year = models.IntegerField(
+        verbose_name='Год обучения'
+    )
     students = models.ManyToManyField(
         User,
         related_name='student_groups',
@@ -64,9 +67,10 @@ class Group(models.Model):
     class Meta:
         verbose_name = 'Группа'
         verbose_name_plural = 'Группы'
+        unique_together = ['name', 'year']
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.year})"
 
     def validate_student(self, student):
         """Проверяет, что студент не состоит в другой группе"""
@@ -97,7 +101,7 @@ class Course(models.Model):
         ('autumn', 'Осень'),
     ]
 
-    title = models.CharField(
+    name = models.CharField(
         max_length=200,
         verbose_name='Название курса'
     )
@@ -130,7 +134,7 @@ class Course(models.Model):
         verbose_name_plural = 'Курсы'
 
     def __str__(self):
-        return f"{self.title} ({self.get_semester_display()} {self.year})"
+        return f"{self.name} ({self.get_semester_display()} {self.year})"
 
 
 class Lesson(models.Model):
@@ -140,12 +144,13 @@ class Lesson(models.Model):
         related_name='lessons',
         verbose_name='Курс'
     )
-    date = models.DateTimeField(
-        verbose_name='Дата и время'
-    )
     topic = models.CharField(
         max_length=200,
-        verbose_name='Тема занятия'
+        verbose_name='Тема занятия',
+        default='-'
+    )
+    date = models.DateTimeField(
+        verbose_name='Дата и время'
     )
 
     class Meta:
@@ -154,7 +159,7 @@ class Lesson(models.Model):
         ordering = ['-date']
 
     def __str__(self):
-        return f"{self.course.title} — {self.topic} ({self.date:%d.%m.%Y})"
+        return f"{self.course.name} — {self.topic} ({self.date:%d.%m.%Y})"
 
 
 class Attendance(models.Model):

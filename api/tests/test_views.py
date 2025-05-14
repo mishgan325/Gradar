@@ -52,7 +52,7 @@ def group(teacher):
 @pytest.fixture
 def course(teacher, group):
     course = Course.objects.create(
-        title='Test Course',
+        name='Test Course',
         description='Test Description',
         teacher=teacher,
         semester='fall',
@@ -66,7 +66,7 @@ def lesson(course):
     return Lesson.objects.create(
         course=course,
         date=datetime.now() + timedelta(days=1),
-        topic='Test Topic'
+        title='Test Lesson'
     )
 
 @pytest.mark.django_db
@@ -113,14 +113,14 @@ class TestCourseEndpoints:
         api_client.force_authenticate(user=teacher)
         url = reverse('course-list')
         data = {
-            'title': 'New Course',
+            'name': 'New Course',
             'description': 'Course Description',
             'semester': 'fall',
             'year': 2024
         }
         response = api_client.post(url, data, format='json')
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data['title'] == 'New Course'
+        assert response.data['name'] == 'New Course'
 
     def test_add_group_to_course(self, api_client, teacher, course, group):
         api_client.force_authenticate(user=teacher)
