@@ -75,4 +75,25 @@ class TestAuthentication:
             'refresh': 'invalid_token'
         }
         response = api_client.post(url, data)
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_invalid_login_credentials(self, create_user, api_client):
+        """Test that invalid login credentials return 401"""
+        user = create_user(username='testuser', password='testpass123')
+        url = reverse('token_obtain_pair')
+        
+        # Test with wrong password
+        data = {
+            'username': 'testuser',
+            'password': 'wrongpass'
+        }
+        response = api_client.post(url, data)
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        
+        # Test with non-existent user
+        data = {
+            'username': 'nonexistent',
+            'password': 'testpass123'
+        }
+        response = api_client.post(url, data)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED 
