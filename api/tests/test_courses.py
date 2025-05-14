@@ -79,22 +79,41 @@ class TestCourseAPI:
         assert course.name == 'Updated Course'
 
     def test_other_teacher_cannot_update_course(self, auth_client):
-        # Create a course
-        course = Course.objects.create(
-            name='Test Course',
-            description='Test Description',
-            semester='spring',
-            year=2024,
-            teacher=self.teacher
-        )
+        """Test that teachers cannot update other teachers' courses"""
+        # First teacher creates a course
+        client1, teacher1 = auth_client(role='teacher')
+        course_data = {
+            'name': f'Test Course {uuid.uuid4().hex}',
+            'description': 'Test Description',
+            'semester': 'spring',
+            'year': 2024
+        }
+        response = client1.post(reverse('course-list'), course_data)
+        assert response.status_code == status.HTTP_201_CREATED
+        course_id = response.data['id']
         
-        # Create another teacher
-        other_client, other_teacher = auth_client(role='teacher')
-        
-        data = {'name': 'Updated Course'}
-        url = reverse('course-detail', args=[course.id])
-        response = other_client.patch(url, data)
+        # Verify the course was created with correct data
+        assert response.data['name'] == course_data['name']
+        assert response.data['description'] == course_data['description']
+        assert response.data['semester'] == course_data['semester']
+        assert response.data['year'] == course_data['year']
+
+        # Second teacher tries to update it
+        client2, teacher2 = auth_client(role='teacher')
+        update_data = {
+            'name': 'Updated Course',
+            'description': 'Updated Description',
+            'semester': 'autumn'
+        }
+        response = client2.patch(reverse('course-detail', args=[course_id]), update_data)
         assert response.status_code == status.HTTP_403_FORBIDDEN
+        
+        # Verify the course was not updated
+        response = client1.get(reverse('course-detail', args=[course_id]))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['name'] == course_data['name']
+        assert response.data['description'] == course_data['description']
+        assert response.data['semester'] == course_data['semester']
 
     def test_add_group_to_course(self):
         # Create a course
@@ -210,25 +229,6 @@ class TestCourseAPI:
         assert response.data['semester'] == update_data['semester']
         assert response.data['year'] == update_data['year']
 
-    def test_update_course_other_teacher(self, auth_client):
-        """Test that teachers cannot update other teachers' courses"""
-        # First teacher creates a course
-        client1, teacher1 = auth_client(role='teacher')
-        course_data = {
-            'name': f'Test Course {uuid.uuid4().hex}',
-            'semester': 'spring',
-            'year': 2024
-        }
-        response = client1.post(reverse('course-list'), course_data)
-        assert response.status_code == status.HTTP_201_CREATED
-        course_id = response.data['id']
-
-        # Second teacher tries to update it
-        client2, teacher2 = auth_client(role='teacher')
-        update_data = {'name': 'Updated Course'}
-        response = client2.patch(reverse('course-detail', args=[course_id]), update_data)
-        assert response.status_code == status.HTTP_403_FORBIDDEN
-
     def test_delete_course_teacher(self, auth_client):
         """Test that teachers can delete their courses"""
         client, teacher = auth_client(role='teacher')
@@ -237,7 +237,8 @@ class TestCourseAPI:
         course_data = {
             'name': f'Test Course {uuid.uuid4().hex}',
             'semester': 'spring',
-            'year': 2024
+            'year': 2024,
+            'description': 'Test Description'
         }
         response = client.post(reverse('course-list'), course_data)
         assert response.status_code == status.HTTP_201_CREATED
@@ -256,7 +257,8 @@ class TestCourseAPI:
         course_data = {
             'name': f'Test Course {uuid.uuid4().hex}',
             'semester': 'spring',
-            'year': 2024
+            'year': 2024,
+            'description': 'Test Description'
         }
         response = client.post(reverse('course-list'), course_data)
         assert response.status_code == status.HTTP_201_CREATED
@@ -265,6 +267,7 @@ class TestCourseAPI:
         # Try to add nonexistent group
         url = reverse('course-add-group', args=[course_id])
         response = client.post(url, {'group_id': 999999})
+        print(f"\nResponse data: {response.data}")  # Debug print
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "Группа с ID 999999 не найдена" in str(response.data['error'])
 
