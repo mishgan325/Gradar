@@ -1,0 +1,1198 @@
+{
+	"info": {
+		"_postman_id": "random-uuid",
+		"name": "Gradar API",
+		"description": "API collection for Gradar - Grade Management System",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global pre-request script",
+					"// You can add common pre-request logic here"
+				]
+			}
+		}
+	],
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register Teacher",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has correct teacher data\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.role).to.eql('teacher');",
+									"    pm.expect(jsonData.email).to.eql(pm.environment.get('teacher_username'));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"{{teacher_username}}\",\n    \"email\": \"{{teacher_username}}\",\n    \"password\": \"{{teacher_password}}\",\n    \"role\": \"teacher\",\n    \"first_name\": \"John\",\n    \"last_name\": \"Doe\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/users/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "users", ""]
+						},
+						"description": "Register a new teacher user"
+					}
+				},
+				{
+					"name": "Register Student",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has correct student data\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.role).to.eql('student');",
+									"    pm.expect(jsonData.email).to.eql(pm.environment.get('student_username'));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"{{student_username}}\",\n    \"email\": \"{{student_username}}\",\n    \"password\": \"{{student_password}}\",\n    \"role\": \"student\",\n    \"first_name\": \"Jane\",\n    \"last_name\": \"Smith\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/users/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "users", ""]
+						},
+						"description": "Register a new student user"
+					}
+				},
+				{
+					"name": "Login as Teacher",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has tokens\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.access).to.be.a('string');",
+									"    pm.expect(jsonData.refresh).to.be.a('string');",
+									"    ",
+									"    // Save tokens to environment",
+									"    pm.environment.set('access_token', jsonData.access);",
+									"    pm.environment.set('refresh_token', jsonData.refresh);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"{{teacher_username}}\",\n    \"password\": \"{{teacher_password}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/token/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "token", ""]
+						},
+						"description": "Login as teacher and get JWT tokens"
+					}
+				},
+				{
+					"name": "Login as Student",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has tokens\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.access).to.be.a('string');",
+									"    pm.expect(jsonData.refresh).to.be.a('string');",
+									"    ",
+									"    // Save tokens to environment",
+									"    pm.environment.set('access_token', jsonData.access);",
+									"    pm.environment.set('refresh_token', jsonData.refresh);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"{{student_username}}\",\n    \"password\": \"{{student_password}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/token/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "token", ""]
+						},
+						"description": "Login as student and get JWT tokens"
+					}
+				},
+				{
+					"name": "Refresh Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has new access token\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.access).to.be.a('string');",
+									"    ",
+									"    // Update access token",
+									"    pm.environment.set('access_token', jsonData.access);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refresh\": \"{{refresh_token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/token/refresh/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "token", "refresh", ""]
+						},
+						"description": "Refresh access token using refresh token"
+					}
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Get Current User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/users/me/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "users", "me", ""]
+						},
+						"description": "Get current user information"
+					}
+				},
+				{
+					"name": "List Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/users/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "users", ""]
+						},
+						"description": "List all users (requires teacher role)"
+					}
+				}
+			]
+		},
+		{
+			"name": "Groups",
+			"item": [
+				{
+					"name": "List Groups",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/groups/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "groups", ""]
+						},
+						"description": "List all groups"
+					}
+				},
+				{
+					"name": "Create Group",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Group A\",\n    \"students\": [1, 2, 3]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/groups/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "groups", ""]
+						},
+						"description": "Create a new group (requires teacher role)"
+					}
+				},
+				{
+					"name": "Get Group Details",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Group details are correct\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('name');",
+									"    pm.expect(jsonData).to.have.property('students');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/groups/{{group_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "groups", "{{group_id}}", ""]
+						},
+						"description": "Get details of a specific group"
+					}
+				},
+				{
+					"name": "Update Group",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Group updated successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.name).to.eql(\"Updated Group Name\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Group Name\",\n    \"student_ids\": [1, 2, 3]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/groups/{{group_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "groups", "{{group_id}}", ""]
+						},
+						"description": "Update a group (requires teacher role)"
+					}
+				},
+				{
+					"name": "Delete Group",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/groups/{{group_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "groups", "{{group_id}}", ""]
+						},
+						"description": "Delete a group (requires teacher role)"
+					}
+				}
+			]
+		},
+		{
+			"name": "Courses",
+			"item": [
+				{
+					"name": "Create Course (Teacher)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Course created successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.title).to.eql('Mathematics 101');",
+									"    pm.expect(jsonData.semester).to.eql('spring');",
+									"    ",
+									"    // Save course ID for later use",
+									"    if (jsonData.id) {",
+									"        pm.environment.set('course_id', jsonData.id);",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Mathematics 101\",\n    \"description\": \"Introduction to Mathematics\",\n    \"semester\": \"spring\",\n    \"year\": 2024\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/courses/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "courses", ""]
+						},
+						"description": "Create a new course (requires teacher role)"
+					}
+				},
+				{
+					"name": "List Courses",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/courses/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "courses", ""]
+						},
+						"description": "List all courses (filtered by role)"
+					}
+				},
+				{
+					"name": "Get Course Details",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Course details are correct\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('title');",
+									"    pm.expect(jsonData).to.have.property('description');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/courses/{{course_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "courses", "{{course_id}}"]
+						},
+						"description": "Get details of a specific course"
+					}
+				},
+				{
+					"name": "Update Course",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Course updated successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.title).to.eql(\"Updated Course Title\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated Course Title\",\n    \"description\": \"Updated course description\",\n    \"semester\": \"spring\",\n    \"year\": 2024\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/courses/{{course_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "courses", "{{course_id}}"]
+						},
+						"description": "Update a course (requires teacher role)"
+					}
+				},
+				{
+					"name": "Delete Course",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/courses/{{course_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "courses", "{{course_id}}"]
+						},
+						"description": "Delete a course (requires teacher role)"
+					}
+				},
+				{
+					"name": "Add Students to Course",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Students added successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.students).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"student_ids\": [1, 2, 3]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/courses/{{course_id}}/add-students/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "courses", "{{course_id}}", "add-students", ""]
+						},
+						"description": "Add students to a course (requires teacher role)"
+					}
+				},
+				{
+					"name": "Add Group to Course",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Group added successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.group).to.be.an('object');",
+									"    pm.expect(jsonData.students).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"group_id\": \"{{group_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/courses/{{course_id}}/add-group/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "courses", "{{course_id}}", "add-group", ""]
+						},
+						"description": "Add a group of students to a course (requires teacher role)"
+					}
+				}
+			]
+		},
+		{
+			"name": "Lessons",
+			"item": [
+				{
+					"name": "Create Lesson",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Lesson created successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.topic).to.eql('Introduction to Algebra');",
+									"    ",
+									"    // Save lesson ID for later use",
+									"    if (jsonData.id) {",
+									"        pm.environment.set('lesson_id', jsonData.id);",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"course\": \"{{course_id}}\",\n    \"date\": \"2024-02-20T10:00:00Z\",\n    \"topic\": \"Introduction to Algebra\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/lessons/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "lessons", ""]
+						},
+						"description": "Create a new lesson (requires teacher role)"
+					}
+				},
+				{
+					"name": "List Lessons",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/lessons/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "lessons", ""]
+						},
+						"description": "List all lessons (filtered by role)"
+					}
+				},
+				{
+					"name": "Get Lesson Details",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Lesson details are correct\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('topic');",
+									"    pm.expect(jsonData).to.have.property('date');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/lessons/{{lesson_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "lessons", "{{lesson_id}}"]
+						},
+						"description": "Get details of a specific lesson"
+					}
+				},
+				{
+					"name": "Update Lesson",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Lesson updated successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.topic).to.eql(\"Updated Topic\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"course\": \"{{course_id}}\",\n    \"date\": \"2024-02-21T10:00:00Z\",\n    \"topic\": \"Updated Topic\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/lessons/{{lesson_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "lessons", "{{lesson_id}}"]
+						},
+						"description": "Update a lesson (requires teacher role)"
+					}
+				},
+				{
+					"name": "Delete Lesson",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/lessons/{{lesson_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "lessons", "{{lesson_id}}"]
+						},
+						"description": "Delete a lesson (requires teacher role)"
+					}
+				}
+			]
+		},
+		{
+			"name": "Attendance",
+			"item": [
+				{
+					"name": "List Attendance",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/attendances/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "attendances"]
+						},
+						"description": "List attendance records (filtered by role)"
+					}
+				},
+				{
+					"name": "Mark Attendance",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"lesson\": 1,\n    \"student\": 2,\n    \"is_present\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/attendances/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "attendances"]
+						},
+						"description": "Mark student attendance (requires teacher role)"
+					}
+				}
+			]
+		},
+		{
+			"name": "Grades",
+			"item": [
+				{
+					"name": "Add Grade",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Grade added successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.value).to.eql(85);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"lesson\": \"{{lesson_id}}\",\n    \"student\": \"{{student_id}}\",\n    \"value\": 85,\n    \"comment\": \"Good work!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/grades/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "grades", ""]
+						},
+						"description": "Add a grade for a student (requires teacher role)"
+					}
+				},
+				{
+					"name": "Get Student Grades",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/grades/my_grades/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "grades", "my_grades", ""]
+						},
+						"description": "Get grades for current student"
+					}
+				},
+				{
+					"name": "List All Grades",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/grades/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "grades"]
+						},
+						"description": "List all grades (filtered by role - teachers see all, students see only their own)"
+					}
+				},
+				{
+					"name": "Update Grade",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Grade updated successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.value).to.eql(90);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"lesson\": \"{{lesson_id}}\",\n    \"student\": \"{{student_id}}\",\n    \"value\": 90,\n    \"comment\": \"Updated grade comment\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/grades/{{grade_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "grades", "{{grade_id}}"]
+						},
+						"description": "Update a grade (requires teacher role)"
+					}
+				},
+				{
+					"name": "Delete Grade",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/grades/{{grade_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "grades", "{{grade_id}}"]
+						},
+						"description": "Delete a grade (requires teacher role)"
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "your_access_token_here",
+			"type": "string"
+		}
+	]
+} 

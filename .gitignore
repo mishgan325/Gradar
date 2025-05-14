@@ -1,0 +1,89 @@
+# Django
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.py[cod]
+*$py.class
+db.sqlite3
+test_db.sqlite3
+local_settings.py
+
+# VS Code settings
+.vscode/
+*.code-workspace
+
+# Virtual Environment
+venv/
+.env/
+ENV/
+
+# Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+.Python
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Environments and secrets
+*.env
+.env
+.env.*
+!.env.example
+.secret_key
+*.pem
+*.key
+*.cert
+*.sqlite3-journal
+
+# Coverage and testing
+.coverage
+htmlcov/
+.tox/
+.pytest_cache/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Media and static files (if managed outside of version control)
+media/
+static/
+assets/
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+*.sqlite3
