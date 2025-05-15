@@ -58,20 +58,17 @@ class TestGroupAPI:
         group.refresh_from_db()
         assert group.name == 'Updated Group'
 
-    def test_add_student_to_group(self):
-        # Create a group first
-        group = Group.objects.create(
-            name='Test Group',
-            year=2024
-        )
-        
-        data = {'student_id': self.student.id}
-        url = reverse('group-add-student', args=[group.id])
-        response = self.teacher_client.post(url, data)
+    def test_add_student_to_group(self, auth_client, test_group, create_user):
+        """Test adding a student to a group"""
+        client, _ = auth_client(role='teacher')
+        student = create_user(role='student')
+        url = reverse('group-add-student', args=[test_group['id']])
+        data = {'student_id': student.id}
+        response = client.post(url, data)
         assert response.status_code == status.HTTP_200_OK
         # Verify student was added to group
-        group.refresh_from_db()
-        assert self.student in group.students.all()
+        group = Group.objects.get(id=test_group['id'])
+        assert student in group.students.all()
 
     def test_student_single_group_validation(self):
         # Create two groups
@@ -188,18 +185,6 @@ class TestGroupAPI:
         # Verify group still exists
         assert Group.objects.filter(id=test_group['id']).exists()
 
-    def test_add_student_to_group(self, auth_client, test_group, create_user):
-        """Test adding a student to a group"""
-        client, _ = auth_client(role='teacher')
-        student = create_user(role='student')
-        url = reverse('group-add-student', args=[test_group['id']])
-        data = {'student_id': student.id}
-        response = client.post(url, data)
-        assert response.status_code == status.HTTP_200_OK
-        # Verify student was added to group
-        group = Group.objects.get(id=test_group['id'])
-        assert student in group.students.all()
-
     def test_remove_student_from_group(self, auth_client, test_group, create_user):
         """Test removing a student from a group"""
         client, _ = auth_client(role='teacher')
@@ -245,7 +230,7 @@ class TestGroupAPI:
         group = create_group()
         group.students.add(student1, student2)
         
-        url = reverse('group-students', args=[group.id])
+        url = reverse('group-list-students', args=[group.id])
         response = client.get(url)
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 2

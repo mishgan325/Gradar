@@ -284,6 +284,30 @@
 			"item": [
 				{
 					"name": "List Groups",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array of groups\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"    if (jsonData.length > 0) {",
+									"        pm.expect(jsonData[0]).to.have.property('id');",
+									"        pm.expect(jsonData[0]).to.have.property('name');",
+									"        pm.expect(jsonData[0]).to.have.property('year');",
+									"        pm.expect(jsonData[0]).to.have.property('students');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "GET",
 						"header": [
@@ -302,6 +326,31 @@
 				},
 				{
 					"name": "Create Group",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Group created successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('name');",
+									"    pm.expect(jsonData).to.have.property('year');",
+									"    ",
+									"    // Save group ID for later use",
+									"    if (jsonData.id) {",
+									"        pm.environment.set('group_id', jsonData.id);",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [
@@ -316,7 +365,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Group A\",\n    \"students\": [1, 2, 3]\n}"
+							"raw": "{\n    \"name\": \"Group A\",\n    \"year\": 2024\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/groups/",
@@ -438,6 +487,95 @@
 						},
 						"description": "Delete a group (requires teacher role)"
 					}
+				},
+				{
+					"name": "Add Students to Group",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Students added successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.students).to.be.an('array');",
+									"    pm.expect(jsonData.students.length).to.be.greaterThan(0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"student_ids\": [\"{{student_id}}\", \"{{student_id_2}}\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/groups/{{group_id}}/add_students/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "groups", "{{group_id}}", "add_students", ""]
+						},
+						"description": "Add students to a group (requires teacher role)"
+					}
+				},
+				{
+					"name": "Remove Students from Group",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Students removed successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('message');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"student_ids\": [\"{{student_id}}\", \"{{student_id_2}}\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/groups/{{group_id}}/remove_students/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "groups", "{{group_id}}", "remove_students", ""]
+						},
+						"description": "Remove students from a group (requires teacher role)"
+					}
 				}
 			]
 		},
@@ -457,7 +595,7 @@
 									"",
 									"pm.test(\"Course created successfully\", function () {",
 									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.title).to.eql('Mathematics 101');",
+									"    pm.expect(jsonData.name).to.eql('Mathematics 101');",
 									"    pm.expect(jsonData.semester).to.eql('spring');",
 									"    ",
 									"    // Save course ID for later use",
@@ -484,7 +622,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"title\": \"Mathematics 101\",\n    \"description\": \"Introduction to Mathematics\",\n    \"semester\": \"spring\",\n    \"year\": 2024\n}"
+							"raw": "{\n    \"name\": \"Mathematics 101\",\n    \"description\": \"Introduction to Mathematics\",\n    \"semester\": \"spring\",\n    \"year\": 2024\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/courses/",
@@ -544,7 +682,7 @@
 									"pm.test(\"Course details are correct\", function () {",
 									"    var jsonData = pm.response.json();",
 									"    pm.expect(jsonData).to.have.property('id');",
-									"    pm.expect(jsonData).to.have.property('title');",
+									"    pm.expect(jsonData).to.have.property('name');",
 									"    pm.expect(jsonData).to.have.property('description');",
 									"});"
 								],
@@ -581,7 +719,7 @@
 									"",
 									"pm.test(\"Course updated successfully\", function () {",
 									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.title).to.eql(\"Updated Course Title\");",
+									"    pm.expect(jsonData.name).to.eql(\"Updated Course Title\");",
 									"});"
 								],
 								"type": "text/javascript"
@@ -602,7 +740,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"title\": \"Updated Course Title\",\n    \"description\": \"Updated course description\",\n    \"semester\": \"spring\",\n    \"year\": 2024\n}"
+							"raw": "{\n    \"name\": \"Updated Course Title\",\n    \"description\": \"Updated course description\",\n    \"semester\": \"spring\",\n    \"year\": 2024\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/courses/{{course_id}}/",
@@ -730,6 +868,45 @@
 							"path": ["api", "courses", "{{course_id}}", "add-group", ""]
 						},
 						"description": "Add a group of students to a course (requires teacher role)"
+					}
+				},
+				{
+					"name": "Get Student Course Grades",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array of grades\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"    if (jsonData.length > 0) {",
+									"        pm.expect(jsonData[0]).to.have.property('value');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/courses/{{course_id}}/my_grades/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "courses", "{{course_id}}", "my_grades", ""]
+						},
+						"description": "Get all grades for the current student in a specific course"
 					}
 				}
 			]
@@ -933,6 +1110,51 @@
 							"path": ["api", "lessons", "{{lesson_id}}"]
 						},
 						"description": "Delete a lesson (requires teacher role)"
+					}
+				},
+				{
+					"name": "Bulk Assign Grades",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Grades assigned successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"    pm.expect(jsonData.length).to.be.greaterThan(0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\"student_id\": \"{{student_id}}\", \"value\": 85},\n    {\"student_id\": \"{{student_id_2}}\", \"value\": 90}\n]"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/lessons/{{lesson_id}}/bulk_grades/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "lessons", "{{lesson_id}}", "bulk_grades", ""]
+						},
+						"description": "Bulk assign grades to multiple students for a lesson (requires teacher role)"
 					}
 				}
 			]
