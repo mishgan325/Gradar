@@ -192,9 +192,10 @@ class AttendanceSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Указанный студент не существует")
 
     def create(self, validated_data):
-        lesson = Lesson.objects.get(id=validated_data.pop('lesson_id'))
-        student = User.objects.get(id=validated_data.pop('student_id'))
-        return Attendance.objects.create(lesson=lesson, student=student, **validated_data)
+        # Удаляем lesson_id и student_id, так как у нас уже есть объекты lesson и student
+        validated_data.pop('lesson_id', None)
+        validated_data.pop('student_id', None)
+        return Attendance.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
         if 'lesson_id' in validated_data:
@@ -216,32 +217,20 @@ class GradeSerializer(serializers.ModelSerializer):
         model = Grade
         fields = ['id', 'lesson', 'student', 'lesson_id', 'student_id', 'value', 'comment']
 
-    def validate(self, data):
-        try:
-            lesson = Lesson.objects.get(id=data['lesson_id'])
-            student = User.objects.get(id=data['student_id'], role='student')
-            
-            # Проверяем, что студент записан на курс через группу
-            if not student.student_groups.filter(courses=lesson.course).exists():
-                raise serializers.ValidationError("Студент не записан на этот курс")
-            
-            return data
-            
-        except Lesson.DoesNotExist:
-            raise serializers.ValidationError(f"Урок с ID {data.get('lesson_id')} не найден")
-        except User.DoesNotExist:
-            raise serializers.ValidationError(f"Студент с ID {data.get('student_id')} не найден")
-
     def create(self, validated_data):
-        lesson = Lesson.objects.get(id=validated_data.pop('lesson_id'))
-        student = User.objects.get(id=validated_data.pop('student_id'))
+        lesson_id = validated_data.pop('lesson_id')
+        student_id = validated_data.pop('student_id')
+        lesson = Lesson.objects.get(id=lesson_id)
+        student = User.objects.get(id=student_id)
         return Grade.objects.create(lesson=lesson, student=student, **validated_data)
 
     def update(self, instance, validated_data):
         if 'lesson_id' in validated_data:
-            instance.lesson = Lesson.objects.get(id=validated_data.pop('lesson_id'))
+            lesson_id = validated_data.pop('lesson_id')
+            instance.lesson = Lesson.objects.get(id=lesson_id)
         if 'student_id' in validated_data:
-            instance.student = User.objects.get(id=validated_data.pop('student_id'))
+            student_id = validated_data.pop('student_id')
+            instance.student = User.objects.get(id=student_id)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()

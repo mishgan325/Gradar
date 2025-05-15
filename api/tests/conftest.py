@@ -60,7 +60,11 @@ def get_or_create_token():
 @pytest.fixture
 def auth_client(api_client, create_user, get_or_create_token):
     def get_client(role='student'):
-        user = create_user(role=role)
+        user = create_user(
+            role=role,
+            first_name=f'Test {role.capitalize()}',
+            last_name='User'
+        )
         tokens = get_or_create_token(user)
         client = APIClient()
         client.credentials(HTTP_AUTHORIZATION=f'Bearer {tokens["access"]}')
@@ -72,6 +76,7 @@ def create_course():
     def make_course(teacher, name='Test Course', semester='spring', year=2024):
         return Course.objects.create(
             name=name,
+            description='Test course description',
             teacher=teacher,
             semester=semester,
             year=year
@@ -80,15 +85,13 @@ def create_course():
 
 @pytest.fixture
 def create_lesson():
-    def make_lesson(course, title='Test Lesson', date=None):
+    def make_lesson(course, topic='Test Lesson', date=None):
         if date is None:
             date = datetime.now() + timedelta(days=1)
         return Lesson.objects.create(
             course=course,
-            title=title,
-            date=date,
-            start_time='10:00:00',
-            end_time='11:00:00'
+            topic=topic,
+            date=date
         )
     return make_lesson
 

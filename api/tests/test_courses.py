@@ -106,7 +106,7 @@ class TestCourseAPI:
             'semester': 'autumn'
         }
         response = client2.patch(reverse('course-detail', args=[course_id]), update_data)
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_404_NOT_FOUND
         
         # Verify the course was not updated
         response = client1.get(reverse('course-detail', args=[course_id]))

@@ -3,6 +3,14 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 
+# Константы для семестров
+SEMESTER_SPRING = 'spring'
+SEMESTER_AUTUMN = 'autumn'
+VALID_SEMESTER_VALUES = [SEMESTER_SPRING, SEMESTER_AUTUMN]
+SEMESTER_CHOICES = [
+    (SEMESTER_SPRING, 'Весна'),
+    (SEMESTER_AUTUMN, 'Осень'),
+]
 
 class User(AbstractUser):
     ROLE_CHOICES = (
@@ -96,11 +104,6 @@ class Group(models.Model):
 
 
 class Course(models.Model):
-    SEMESTERS = [
-        ('spring', 'Весна'),
-        ('autumn', 'Осень'),
-    ]
-
     name = models.CharField(
         max_length=200,
         verbose_name='Название курса'
@@ -116,13 +119,13 @@ class Course(models.Model):
         verbose_name='Преподаватель'
     )
     groups = models.ManyToManyField(
-        Group,
+        'Group',
         related_name='courses',
         verbose_name='Группы'
     )
     semester = models.CharField(
         max_length=6,
-        choices=SEMESTERS,
+        choices=SEMESTER_CHOICES,
         verbose_name='Семестр'
     )
     year = models.PositiveIntegerField(

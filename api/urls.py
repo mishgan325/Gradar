@@ -21,5 +21,7 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('courses/<int:pk>/add-group/', CourseViewSet.as_view({'post': 'add_group'}), name='course-add-group'),
     path('groups/<int:pk>/students/', GroupViewSet.as_view({'get': 'list_students'}), name='group-students'),
-    path('groups/<int:pk>/bulk-add-students/', GroupViewSet.as_view({'post': 'bulk_add_students'}), name='group-bulk-add-students'),
+    path('groups/<int:pk>/add-student/', GroupViewSet.as_view({'post': 'add_student'}), name='group-add-student'),
+    path('groups/<int:pk>/remove-student/', GroupViewSet.as_view({'post': 'remove_student'}), name='group-remove-student'),
+    path('groups/<int:pk>/add-students/', GroupViewSet.as_view({'post': 'bulk_add_students'}), name='group-add-students'),
 ]

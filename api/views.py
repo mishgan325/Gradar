@@ -1,11 +1,14 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied, ValidationError
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, ValidationError as DjangoValidationError
 from rest_framework.response import Response
 from rest_framework import status
 from django.db.models import Q
-from .models import User, Course, Lesson, Attendance, Grade, Group
+from .models import (
+    User, Course, Lesson, Attendance, Grade, Group,
+    SEMESTER_SPRING, SEMESTER_AUTUMN, VALID_SEMESTER_VALUES
+)
 from .serializers import UserSerializer, CourseSerializer, LessonSerializer, AttendanceSerializer, GradeSerializer, GroupSerializer
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
@@ -278,7 +281,10 @@ class GroupViewSet(viewsets.ModelViewSet):
                 raise ValidationError("Поле 'student_ids' должно быть списком")
             
             # Проверяем, что студенты не состоят в других группах
-            self.validate_students(student_ids, group)
+            try:
+                self.validate_students(student_ids, group)
+            except DjangoValidationError as e:
+                raise ValidationError(e.messages[0] if e.messages else str(e))
             
             # Добавляем студентов в группу
             students = User.objects.filter(id__in=student_ids, role='student')
@@ -314,7 +320,16 @@ class CourseViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.role == 'teacher':
             return Course.objects.filter(teacher=user)
-        return Course.objects.filter(groups__students=user).distinct()
+        return Course.objects.filter(groups__students=user)
+
+    def get_object(self):
+        obj = super().get_object()
+        if self.request.method not in ['GET', 'HEAD', 'OPTIONS']:
+            if not self.request.user.is_teacher():
+                raise PermissionDenied("Только преподаватели могут управлять курсами")
+            if obj.teacher != self.request.user:
+                raise PermissionDenied("Вы не являетесь преподавателем этого курса")
+        return obj
 
     def perform_create(self, serializer):
         self.check_teacher_permission()
@@ -332,8 +347,8 @@ class CourseViewSet(viewsets.ModelViewSet):
             
             # Проверка семестра
             semester = request.data.get('semester')
-            if semester not in ['spring', 'fall']:
-                raise ValidationError("Семестр должен быть 'spring' или 'fall'")
+            if semester not in VALID_SEMESTER_VALUES:
+                raise ValidationError(f"Семестр должен быть '{SEMESTER_SPRING}' или '{SEMESTER_AUTUMN}'")
             
             # Проверка года
             year = request.data.get('year')
@@ -356,28 +371,28 @@ class CourseViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         try:
-            self.check_teacher_permission()
             instance = self.get_object()
-            
-            if instance.teacher != self.request.user:
-                raise PermissionDenied("Вы не являетесь преподавателем этого курса")
             
             # Проверка семестра если он указан
             semester = request.data.get('semester')
-            if semester is not None and semester not in ['spring', 'autumn']:
-                raise ValidationError("Семестр должен быть 'spring' или 'autumn'")
+            if semester is not None and semester not in VALID_SEMESTER_VALUES:
+                raise ValidationError(f"Семестр должен быть '{SEMESTER_SPRING}' или '{SEMESTER_AUTUMN}'")
             
             # Проверка года если он указан
             year = request.data.get('year')
             if year is not None:
                 try:
                     year = int(year)
-                    if year < 2000 or year > 2100:
-                        raise ValidationError("Год должен быть числом между 2000 и 2100")
+                    if year < 2024:
+                        raise ValidationError("Год должен быть числом не меньше 2024")
                 except (TypeError, ValueError):
                     raise ValidationError("Год должен быть числом")
             
-            return super().update(request, *args, **kwargs)
+            serializer = self.get_serializer(instance, data=request.data, partial=kwargs.get('partial', False))
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
         except PermissionDenied as e:
             return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
         except ValidationError as e:
@@ -386,9 +401,8 @@ class CourseViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         try:
             instance = self.get_object()
-            if instance.teacher != self.request.user:
-                raise PermissionDenied("Вы не являетесь преподавателем этого курса")
-            return super().destroy(request, *args, **kwargs)
+            self.perform_destroy(instance)
+            return Response(status=status.HTTP_204_NO_CONTENT)
         except PermissionDenied as e:
             return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
 
@@ -396,9 +410,6 @@ class CourseViewSet(viewsets.ModelViewSet):
     def add_group(self, request, pk=None):
         try:
             course = self.get_object()
-            if course.teacher != request.user:
-                raise PermissionDenied("Вы не являетесь преподавателем этого курса")
-
             group_id = request.data.get('group_id')
             if not group_id:
                 raise ValidationError("Необходимо указать group_id")
@@ -406,7 +417,10 @@ class CourseViewSet(viewsets.ModelViewSet):
             try:
                 group = Group.objects.get(id=group_id)
             except Group.DoesNotExist:
-                raise ValidationError(f"Группа с ID {group_id} не найдена")
+                return Response(
+                    {'error': f"Группа с ID {group_id} не найдена"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             course.groups.add(group)
             serializer = self.get_serializer(course)
@@ -418,6 +432,23 @@ class CourseViewSet(viewsets.ModelViewSet):
             return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['get'])
+    def my_grades(self, request, pk=None):
+        """Get all grades for a student in a course"""
+        course = self.get_object()
+        if request.user.role != 'student':
+            raise PermissionDenied("Только студенты могут просматривать свои оценки")
+        
+        if not Group.objects.filter(students=request.user, courses=course).exists():
+            raise ValidationError("Вы не записаны на этот курс")
+
+        grades = Grade.objects.filter(
+            lesson__course=course,
+            student=request.user
+        )
+        serializer = GradeSerializer(grades, many=True)
+        return Response(serializer.data)
 
 
 class LessonViewSet(viewsets.ModelViewSet):
@@ -436,7 +467,7 @@ class LessonViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.role == 'teacher':
             return Lesson.objects.filter(course__teacher=user)
-        return Lesson.objects.filter(course__groups__students=user).distinct()
+        return Lesson.objects.filter(course__groups__students=user)
 
     def create(self, request, *args, **kwargs):
         try:
@@ -514,6 +545,35 @@ class LessonViewSet(viewsets.ModelViewSet):
         except PermissionDenied as e:
             return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
 
+    @action(detail=True, methods=['post'])
+    def bulk_grades(self, request, pk=None):
+        """Bulk assign grades for a lesson"""
+        lesson = self.get_object()
+        if request.user != lesson.course.teacher:
+            raise PermissionDenied("Вы не являетесь преподавателем этого курса")
+
+        grades = []
+        for grade_data in request.data:
+            student_id = grade_data.get('student_id')
+            value = grade_data.get('value')
+            
+            try:
+                student = User.objects.get(id=student_id, role='student')
+                if not Group.objects.filter(students=student, courses=lesson.course).exists():
+                    raise ValidationError(f"Студент с ID {student_id} не записан на этот курс")
+                
+                grade = Grade.objects.create(
+                    lesson=lesson,
+                    student=student,
+                    value=value
+                )
+                grades.append(grade)
+            except User.DoesNotExist:
+                raise ValidationError(f"Студент с ID {student_id} не найден")
+
+        serializer = GradeSerializer(grades, many=True)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 class AttendanceViewSet(viewsets.ModelViewSet):
     queryset = Attendance.objects.all()
@@ -538,7 +598,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
             self.check_teacher_permission()
 
             # Проверка обязательных полей
-            required_fields = ['lesson_id', 'student_id', 'status']
+            required_fields = ['lesson_id', 'student_id', 'is_present']
             for field in required_fields:
                 if field not in request.data:
                     raise ValidationError(f"Поле '{field}' обязательно")
@@ -561,13 +621,6 @@ class AttendanceViewSet(viewsets.ModelViewSet):
                     raise ValidationError("Студент не записан на данный курс")
             except User.DoesNotExist:
                 raise ValidationError(f"Студент с ID {student_id} не найден")
-
-            # Проверка статуса посещения
-            attendance_status = request.data.get('status')
-            if attendance_status not in dict(Attendance.STATUS_CHOICES):
-                raise ValidationError(
-                    f"Недопустимый статус. Допустимые значения: {', '.join(dict(Attendance.STATUS_CHOICES).keys())}"
-                )
 
             # Проверка, что посещаемость еще не отмечена
             if Attendance.objects.filter(lesson=lesson, student=student).exists():
@@ -594,13 +647,6 @@ class AttendanceViewSet(viewsets.ModelViewSet):
             
             if instance.lesson.course.teacher != request.user:
                 raise PermissionDenied("Вы не являетесь преподавателем этого курса")
-            
-            # Проверка статуса посещения если он указан
-            status = request.data.get('status')
-            if status and status not in dict(Attendance.STATUS_CHOICES):
-                raise ValidationError(
-                    f"Недопустимый статус. Допустимые значения: {', '.join(dict(Attendance.STATUS_CHOICES).keys())}"
-                )
             
             serializer = self.get_serializer(instance, data=request.data, partial=kwargs.get('partial', False))
             serializer.is_valid(raise_exception=True)
@@ -643,21 +689,27 @@ class GradeViewSet(viewsets.ModelViewSet):
             
         user = self.request.user
         if user.role == 'teacher':
-            return Grade.objects.filter(lesson__course__teacher=user)
+            return Grade.objects.all()
         return Grade.objects.filter(student=user)
+
+    def get_object(self):
+        obj = super().get_object()
+        if self.request.user.role == 'teacher' and obj.lesson.course.teacher != self.request.user:
+            raise PermissionDenied("Вы не являетесь преподавателем этого курса")
+        return obj
 
     def create(self, request, *args, **kwargs):
         try:
             self.check_teacher_permission()
 
             # Проверка обязательных полей
-            required_fields = ['lesson', 'student', 'value']
+            required_fields = ['lesson_id', 'student_id', 'value']
             for field in required_fields:
                 if field not in request.data:
-                    raise ValidationError(f"Поле '{field}' обязательно")
+                    return Response({'error': f"Поле '{field}' обязательно"}, status=status.HTTP_400_BAD_REQUEST)
 
             # Проверка существования урока
-            lesson_id = request.data.get('lesson')
+            lesson_id = request.data.get('lesson_id')
             try:
                 lesson = Lesson.objects.get(id=lesson_id)
                 if lesson.course.teacher != request.user:
@@ -666,7 +718,7 @@ class GradeViewSet(viewsets.ModelViewSet):
                 raise ValidationError(f"Урок с ID {lesson_id} не найден")
 
             # Проверка существования студента
-            student_id = request.data.get('student')
+            student_id = request.data.get('student_id')
             try:
                 student = User.objects.get(id=student_id, role='student')
                 # Проверка, что студент записан на курс через группу
