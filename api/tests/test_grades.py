@@ -654,7 +654,7 @@ class TestGradeAPI:
             {'student_id': student1.id, 'value': 85},
             {'student_id': student2.id, 'value': 90}
         ]
-        response = teacher_client.post(f'/api/lessons/{lesson.id}/bulk_grades/', data, format='json')
+        response = teacher_client.post(f'/api/lessons/{lesson.id}/bulk-grades/', data, format='json')
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) == 2
 
