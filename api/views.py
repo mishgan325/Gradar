@@ -203,7 +203,7 @@ class GroupViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], url_path='add-student')
     def add_student(self, request, pk=None):
         """Добавить студента в группу"""
         try:
@@ -255,7 +255,7 @@ class GroupViewSet(viewsets.ModelViewSet):
         except PermissionDenied as e:
             return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
 
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=['get'], url_path='list-students')
     def list_students(self, request, pk=None):
         """Получить список студентов группы"""
         try:
@@ -269,7 +269,7 @@ class GroupViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], url_path='bulk-add-students')
     def bulk_add_students(self, request, pk=None):
         """Массовое добавление студентов в группу"""
         try:
@@ -406,7 +406,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         except PermissionDenied as e:
             return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], url_path='add-group')
     def add_group(self, request, pk=None):
         try:
             course = self.get_object()
@@ -545,7 +545,7 @@ class LessonViewSet(viewsets.ModelViewSet):
         except PermissionDenied as e:
             return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], url_path='bulk-grades')
     def bulk_grades(self, request, pk=None):
         """Bulk assign grades for a lesson"""
         lesson = self.get_object()

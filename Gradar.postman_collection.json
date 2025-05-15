@@ -489,26 +489,7 @@
 					}
 				},
 				{
-					"name": "Add Students to Group",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test(\"Students added successfully\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.students).to.be.an('array');",
-									"    pm.expect(jsonData.students.length).to.be.greaterThan(0);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
+					"name": "Add Student to Group",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -523,36 +504,62 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"student_ids\": [\"{{student_id}}\", \"{{student_id_2}}\"]\n}"
+							"raw": "{\n    \"student_id\": \"{{student_id}}\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/groups/{{group_id}}/add_students/",
+							"raw": "{{base_url}}/api/groups/{{group_id}}/add-student/",
 							"host": ["{{base_url}}"],
-							"path": ["api", "groups", "{{group_id}}", "add_students", ""]
+							"path": ["api", "groups", "{{group_id}}", "add-student", ""]
 						},
-						"description": "Add students to a group (requires teacher role)"
+						"description": "Add a student to a group (requires teacher role)"
 					}
 				},
 				{
-					"name": "Remove Students from Group",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test(\"Students removed successfully\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData).to.have.property('message');",
-									"});"
-								],
-								"type": "text/javascript"
+					"name": "Remove Student from Group",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
 							}
-						}
-					],
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"student_id\": \"{{student_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/groups/{{group_id}}/remove-student/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "groups", "{{group_id}}", "remove-student", ""]
+						},
+						"description": "Remove a student from a group (requires teacher role)"
+					}
+				},
+				{
+					"name": "List Students in Group",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/groups/{{group_id}}/list-students/",
+							"host": ["{{base_url}}"],
+							"path": ["api", "groups", "{{group_id}}", "list-students", ""]
+						},
+						"description": "Get list of students in a group"
+					}
+				},
+				{
+					"name": "Bulk Add Students",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -570,11 +577,11 @@
 							"raw": "{\n    \"student_ids\": [\"{{student_id}}\", \"{{student_id_2}}\"]\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/groups/{{group_id}}/remove_students/",
+							"raw": "{{base_url}}/api/groups/{{group_id}}/bulk-add-students/",
 							"host": ["{{base_url}}"],
-							"path": ["api", "groups", "{{group_id}}", "remove_students", ""]
+							"path": ["api", "groups", "{{group_id}}", "bulk-add-students", ""]
 						},
-						"description": "Remove students from a group (requires teacher role)"
+						"description": "Add multiple students to a group (requires teacher role)"
 					}
 				}
 			]
@@ -782,70 +789,7 @@
 					}
 				},
 				{
-					"name": "Add Students to Course",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test(\"Students added successfully\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.students).to.be.an('array');",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"student_ids\": [1, 2, 3]\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/api/courses/{{course_id}}/add-students/",
-							"host": ["{{base_url}}"],
-							"path": ["api", "courses", "{{course_id}}", "add-students", ""]
-						},
-						"description": "Add students to a course (requires teacher role)"
-					}
-				},
-				{
 					"name": "Add Group to Course",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test(\"Group added successfully\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.group).to.be.an('object');",
-									"    pm.expect(jsonData.students).to.be.an('array');",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
 					"request": {
 						"method": "POST",
 						"header": [
@@ -867,32 +811,11 @@
 							"host": ["{{base_url}}"],
 							"path": ["api", "courses", "{{course_id}}", "add-group", ""]
 						},
-						"description": "Add a group of students to a course (requires teacher role)"
+						"description": "Add a group to a course (requires teacher role)"
 					}
 				},
 				{
-					"name": "Get Student Course Grades",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test(\"Response is an array of grades\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData).to.be.an('array');",
-									"    if (jsonData.length > 0) {",
-									"        pm.expect(jsonData[0]).to.have.property('value');",
-									"    }",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
+					"name": "Get My Grades for Course",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -902,11 +825,11 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/courses/{{course_id}}/my_grades/",
+							"raw": "{{base_url}}/api/courses/{{course_id}}/my-grades/",
 							"host": ["{{base_url}}"],
-							"path": ["api", "courses", "{{course_id}}", "my_grades", ""]
+							"path": ["api", "courses", "{{course_id}}", "my-grades", ""]
 						},
-						"description": "Get all grades for the current student in a specific course"
+						"description": "Get student's grades for a specific course"
 					}
 				}
 			]
@@ -1114,25 +1037,6 @@
 				},
 				{
 					"name": "Bulk Assign Grades",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 201\", function () {",
-									"    pm.response.to.have.status(201);",
-									"});",
-									"",
-									"pm.test(\"Grades assigned successfully\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData).to.be.an('array');",
-									"    pm.expect(jsonData.length).to.be.greaterThan(0);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
 					"request": {
 						"method": "POST",
 						"header": [
@@ -1150,9 +1054,9 @@
 							"raw": "[\n    {\"student_id\": \"{{student_id}}\", \"value\": 85},\n    {\"student_id\": \"{{student_id_2}}\", \"value\": 90}\n]"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/lessons/{{lesson_id}}/bulk_grades/",
+							"raw": "{{base_url}}/api/lessons/{{lesson_id}}/bulk-grades/",
 							"host": ["{{base_url}}"],
-							"path": ["api", "lessons", "{{lesson_id}}", "bulk_grades", ""]
+							"path": ["api", "lessons", "{{lesson_id}}", "bulk-grades", ""]
 						},
 						"description": "Bulk assign grades to multiple students for a lesson (requires teacher role)"
 					}
@@ -1256,25 +1160,7 @@
 					}
 				},
 				{
-					"name": "Get Student Grades",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test(\"Response is an array\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData).to.be.an('array');",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
+					"name": "Get My Grades",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -1284,11 +1170,11 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/grades/my_grades/",
+							"raw": "{{base_url}}/api/grades/my-grades/",
 							"host": ["{{base_url}}"],
-							"path": ["api", "grades", "my_grades", ""]
+							"path": ["api", "grades", "my-grades", ""]
 						},
-						"description": "Get grades for current student"
+						"description": "Get all grades for the current student"
 					}
 				},
 				{
