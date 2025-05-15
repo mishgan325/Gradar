@@ -229,7 +229,7 @@ class GroupViewSet(viewsets.ModelViewSet):
         except PermissionDenied as e:
             return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], url_path='remove-student')
     def remove_student(self, request, pk=None):
         """Удалить студента из группы"""
         try:
@@ -433,7 +433,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=['get'], url_path='my-grades')
     def my_grades(self, request, pk=None):
         """Get all grades for a student in a course"""
         course = self.get_object()
@@ -750,7 +750,7 @@ class GradeViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='my-grades')
     def my_grades(self, request):
         if request.user.role != 'student':
             raise PermissionDenied("Только студенты могут просматривать свои оценки")

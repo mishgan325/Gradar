@@ -692,7 +692,7 @@ class TestGradeAPI:
         Grade.objects.create(lesson=lesson2, student=student, value=90)
 
         # Get grades
-        response = student_client.get(f'/api/courses/{course.id}/my_grades/')
+        response = student_client.get(f'/api/courses/{course.id}/my-grades/')
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 2
         assert response.data[0]['value'] in [85, 90]
